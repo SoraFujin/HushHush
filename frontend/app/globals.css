@@ -1,21 +1,36 @@
+/* styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer utilities {
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  body {
+    font-family: 'Poppins', sans-serif;
   }
-}
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+
+  /* Neon text effect */
+  .neon-gradient {
+    background: linear-gradient(to right, #ff0080, #ff8c00);
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  .neon-effect {
+    text-shadow: 0 0 6px #ff0080, 0 0 10px #ff0080, 0 0 14px #ff8c00, 0 0 20px #ff8c00;
+  }
+
+
+  /* Neon button effect */
+  .neon-button {
+    background: linear-gradient(to right, #ff0080, #ff8c00);
+    color: white;
+    text-shadow: 0 0 10px #ff0080, 0 0 20px #ff0080;
+  }
+
+  .neon-button:hover {
+    background: linear-gradient(to right, #ff8c00, #ff0080);
+    text-shadow: 0 0 10px #ff0080, 0 0 20px #ff0080;
+  }
 }

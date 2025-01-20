@@ -1,7 +1,35 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import Header from './components/header';
+import Header from "./components/header";
 
 export default function Home() {
+  const [serverIP, setServerIP] = useState("");
+  const [connectionMessage, setConnectionMessage] = useState("");
+
+  const handleConnect = async () => {
+    if (serverIP.trim() === "") {
+      setConnectionMessage("Please enter a valid IP address.");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/chat/connect", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ serverIP }),
+      });
+
+      const result = await response.text(); // Or `response.json()` if the backend returns JSON
+      setConnectionMessage(result);
+    } catch (error) {
+      setConnectionMessage("Failed to connect to the server. Please try again.");
+    }
+  };
+
   return (
     <div className="bg-gray-900 text-white">
       {/* Header */}
@@ -29,20 +57,12 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Connect Section */}
-        <div className="mt-12 flex flex-col items-center">
-          <div className="bg-gray-800 p-6 rounded-lg shadow-xl w-80">
-            <input
-              type="text"
-              placeholder="Enter IP Address"
-              className="p-3 w-full mb-4 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            />
-            <Link href="/chat">
-              <button className="neon-button px-6 py-3 rounded-md w-full text-lg font-semibold">
-                Connect
-              </button>
-            </Link>
-          </div>
+        <div className="mt-4">
+          <Link href="/chat">
+            <button className="px-6 py-3 bg-blue-500 text-white rounded-md">
+              Go to Chat
+            </button>
+          </Link>
         </div>
       </main>
     </div>

@@ -1,11 +1,9 @@
 package encryption.finalproject.encryption.utils.PTP;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.KeyFactory;
@@ -15,29 +13,23 @@ import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
-import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import encryption.finalproject.encryption.utils.Encryption.OTPEncryption;
+
 public class Peer {
+
     private static final int LISTENING_PORT = 7777;
     private static SecretKey sharedKey;
-    private static BigInteger p;
-    private static BigInteger g;
-    private static BigInteger privateKey;
-    private static BigInteger publicKey;
-    private static final DiffieHellman dh = new DiffieHellman();
 
     public static void main(String[] args) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-        System.out.println("Are you a server (y/n)?");
-        String role = reader.readLine().trim().toLowerCase();
-
-        if (role.equals("y")) {
+        try {
             startServer();
-        } else {
-            System.out.print("Enter the server's IP address: ");
+        } catch (Exception e) {
+            System.out.println("Server is already running. Enter the server's IP address: ");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
             String serverIP = reader.readLine().trim();
             connectToServer(serverIP);
         }
@@ -48,7 +40,7 @@ public class Peer {
             System.out.println("Server is listening on port " + LISTENING_PORT);
             Socket socket = serverSocket.accept();
             System.out.println("Peer connected: " + socket.getInetAddress());
-            
+
             performDiffieHellman(socket);
             chat(socket);
         }
@@ -57,7 +49,7 @@ public class Peer {
     private static void connectToServer(String serverIP) throws Exception {
         try (Socket socket = new Socket(serverIP, LISTENING_PORT)) {
             System.out.println("Connected to server: " + serverIP);
-            
+
             performDiffieHellman(socket);
             chat(socket);
         }
@@ -69,32 +61,40 @@ public class Peer {
         keyPairGenerator.initialize(2048);
         KeyPair keyPair = keyPairGenerator.generateKeyPair();
 
-        // Send public key to the other peer
+        // Send public key to peer
         OutputStream os = socket.getOutputStream();
         os.write(keyPair.getPublic().getEncoded());
         os.flush();
 
-        // Receive the other peer's public key
-        InputStream is = socket.getInputStream();
+        // Receive peer's public key
         byte[] peerPubKeyBytes = new byte[2048];
-        int bytesRead = is.read(peerPubKeyBytes);
+        int bytesRead = socket.getInputStream().read(peerPubKeyBytes);
 
-        // Generate the shared secret
+        if (bytesRead <= 0) {
+            throw new Exception("Failed to read peer's public key.");
+        }
+
+        // Convert peer's public key from bytes
         KeyFactory keyFactory = KeyFactory.getInstance("DH");
         X509EncodedKeySpec x509Spec = new X509EncodedKeySpec(peerPubKeyBytes);
         PublicKey peerPublicKey = keyFactory.generatePublic(x509Spec);
 
+        // Perform the key agreement
         KeyAgreement keyAgreement = KeyAgreement.getInstance("DH");
         keyAgreement.init(keyPair.getPrivate());
         keyAgreement.doPhase(peerPublicKey, true);
 
-        // Derive the shared secret
         byte[] sharedSecret = keyAgreement.generateSecret();
-        sharedKey = new SecretKeySpec(sharedSecret, 0, 16, "AES");
+        if (sharedSecret == null || sharedSecret.length == 0) {
+            throw new Exception("Shared secret generation failed.");
+        }
 
+        // Derive a shared AES key from the shared secret
+        sharedKey = new SecretKeySpec(sharedSecret, 0, 16, "AES");
+        System.out.println("Shared Key: " + Base64.getEncoder().encodeToString(sharedKey.getEncoded()));
         System.out.println("Shared secret established.");
     }
-    
+
     private static void chat(Socket socket) throws Exception {
         BufferedReader consoleReader = new BufferedReader(new InputStreamReader(System.in));
         BufferedReader socketReader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -123,17 +123,34 @@ public class Peer {
         }
     }
 
-    private static String encrypt(String message) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.ENCRYPT_MODE, sharedKey);
-        byte[] encryptedBytes = cipher.doFinal(message.getBytes());
-        return Base64.getEncoder().encodeToString(encryptedBytes);
+    public static String encrypt(String message) throws Exception {
+        if (sharedKey == null) {
+            throw new IllegalStateException("Shared key is not initialized. Perform key exchange first.");
+        }
+        byte[] plaintext = message.getBytes();
+        byte[] ciphertext = OTPEncryption.encrypt(plaintext, sharedKey.getEncoded());
+        return Base64.getEncoder().encodeToString(ciphertext);
     }
 
-    private static String decrypt(String encryptedMessage) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES");
-        cipher.init(Cipher.DECRYPT_MODE, sharedKey);
-        byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedMessage));
-        return new String(decryptedBytes);
+    public static String decrypt(String encryptedMessage) throws Exception {
+        if (sharedKey == null) {
+            throw new IllegalStateException("Shared key is not initialized. Perform key exchange first.");
+        }
+        try {
+            byte[] ciphertext = Base64.getDecoder().decode(encryptedMessage);
+            byte[] plaintext = OTPEncryption.decrypt(ciphertext, sharedKey.getEncoded());
+            return new String(plaintext);
+        } catch (IllegalArgumentException e) {
+            throw new Exception("Invalid Base64 input", e);
+        }
+    }
+
+    // Method to get the shared key
+    public static String getSharedKey() {
+        if (sharedKey != null) {
+            return Base64.getEncoder().encodeToString(sharedKey.getEncoded());
+        } else {
+            return "Shared key not yet initialized.";
+        }
     }
 }

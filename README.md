@@ -1,4 +1,4 @@
-PTP-Messaging
+# HushHush 
 
 PTP-Messaging is a real-time messaging application built to provide seamless communication between users. It is designed with a simple interface that allows users to send and receive messages instantly. This project is built using modern web technologies, ensuring responsiveness and a smooth user experience.
 #### Features

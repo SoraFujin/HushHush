@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class EncryptionApplication {
+public class HushHush {
 
     public static void main(String[] args) {
-        SpringApplication.run(EncryptionApplication.class, args);
+        SpringApplication.run(HushHush.class, args);
     }
 
 }
